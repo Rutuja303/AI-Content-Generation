@@ -6,6 +6,7 @@ import uvicorn
 
 from app.database import engine, Base
 from app.routers import auth, prompts, posts, schedule, publish, analytics, oauth, content
+from app.routers import settings as settings_router
 from app.core.config import settings
 from app.core.auth import get_current_user
 
@@ -48,6 +49,7 @@ app.include_router(publish.router, prefix="/publish", tags=["Publishing"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 app.include_router(oauth.router, prefix="/oauth", tags=["OAuth"])
 app.include_router(content.router, prefix="/content", tags=["Content Management"])
+app.include_router(settings_router.router, tags=["Settings"])
 
 @app.get("/")
 async def root():
