@@ -157,12 +157,11 @@ const SocialMediaConnect: React.FC = () => {
           navigate('/profile');
         }, 2000);
       } else if (data.auth_url) {
-        // Redirect to OAuth URL
+        // Redirect to OAuth URL immediately
         console.log(`Redirecting to OAuth URL: ${data.auth_url}`);
-        toast.success(`Redirecting to ${platformConfig.name} for authorization...`);
-        setTimeout(() => {
-          window.location.href = data.auth_url;
-        }, 1000);
+        // Redirect immediately without delay
+        window.location.href = data.auth_url;
+        return; // Exit early to prevent any further execution
       } else {
         throw new Error('No OAuth URL received from backend');
       }

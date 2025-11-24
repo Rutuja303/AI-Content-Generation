@@ -28,6 +28,14 @@ class Settings(BaseSettings):
     TWITTER_CLIENT_ID: str = ""
     TWITTER_CLIENT_SECRET: str = ""
     
+    # Twitter API (for posting content)
+    TWITTER_API_KEY: str = ""
+    TWITTER_API_SECRET: str = ""
+    
+    # Twitter Access Tokens (optional - for direct posting without OAuth)
+    TWITTER_ACCESS_TOKEN: str = ""
+    TWITTER_ACCESS_TOKEN_SECRET: str = ""
+    
     # OAuth - LinkedIn
     LINKEDIN_CLIENT_ID: str = ""
     LINKEDIN_CLIENT_SECRET: str = ""
