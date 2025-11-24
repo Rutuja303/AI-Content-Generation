@@ -37,8 +37,7 @@ const Profile: React.FC = () => {
     { platform: 'Twitter', connected: false },
     { platform: 'Instagram', connected: false },
     { platform: 'Facebook', connected: false },
-    { platform: 'LinkedIn', connected: false },
-    { platform: 'Email', connected: false }
+    { platform: 'LinkedIn', connected: false }
   ]);
 
   useEffect(() => {

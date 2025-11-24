@@ -95,6 +95,54 @@ def get_platform_statistics(
     
     return stats
 
+@router.get("/platform-summary")
+def get_platform_summary(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get summary of posts generated and posted per platform for the current user
+    Returns data suitable for bar charts
+    """
+    # Get all platforms
+    platforms = ['twitter', 'instagram', 'linkedin', 'facebook']
+    
+    # Get total generated posts per platform (including posts without prompts)
+    generated_stats = db.query(
+        GeneratedPost.platform,
+        func.count(GeneratedPost.id).label('count')
+    ).filter(
+        GeneratedPost.user_id == current_user.id
+    ).group_by(GeneratedPost.platform).all()
+    
+    generated_dict = {platform: count for platform, count in generated_stats}
+    
+    # Get total published posts per platform
+    published_stats = db.query(
+        GeneratedPost.platform,
+        func.count(GeneratedPost.id).label('count')
+    ).filter(
+        GeneratedPost.user_id == current_user.id,
+        GeneratedPost.status == "published"
+    ).group_by(GeneratedPost.platform).all()
+    
+    published_dict = {platform: count for platform, count in published_stats}
+    
+    # Build response with all platforms
+    platform_data = []
+    for platform in platforms:
+        platform_data.append({
+            "platform": platform,
+            "generated": generated_dict.get(platform, 0),
+            "posted": published_dict.get(platform, 0)
+        })
+    
+    return {
+        "platforms": platform_data,
+        "total_generated": sum(generated_dict.values()),
+        "total_posted": sum(published_dict.values())
+    }
+
 @router.get("/timeline")
 def get_content_timeline(
     current_user: User = Depends(get_current_active_user),

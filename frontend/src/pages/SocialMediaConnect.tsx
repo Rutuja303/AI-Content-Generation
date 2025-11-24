@@ -5,7 +5,6 @@ import {
   Instagram, 
   Facebook, 
   Linkedin, 
-  Mail, 
   ArrowLeft, 
   ExternalLink,
   CheckCircle,
@@ -80,20 +79,6 @@ const platformConfigs: Record<string, PlatformConfig> = {
     apiEndpoint: '/auth/linkedin',
     scopes: ['r_liteprofile', 'w_member_social']
   },
-  email: {
-    name: 'Email',
-    icon: Mail,
-    color: 'bg-gray-600',
-    description: 'Connect your email account to send newsletters and email campaigns.',
-    steps: [
-      'Enter your email service provider (Gmail, Outlook, etc.)',
-      'Configure SMTP settings or use OAuth',
-      'Test the connection with a sample email',
-      'Save your email configuration'
-    ],
-    apiEndpoint: '/auth/email',
-    scopes: ['send', 'compose']
-  }
 };
 
 const SocialMediaConnect: React.FC = () => {
@@ -157,12 +142,11 @@ const SocialMediaConnect: React.FC = () => {
           navigate('/profile');
         }, 2000);
       } else if (data.auth_url) {
-        // Redirect to OAuth URL
+        // Redirect to OAuth URL immediately
         console.log(`Redirecting to OAuth URL: ${data.auth_url}`);
-        toast.success(`Redirecting to ${platformConfig.name} for authorization...`);
-        setTimeout(() => {
-          window.location.href = data.auth_url;
-        }, 1000);
+        // Redirect immediately without delay
+        window.location.href = data.auth_url;
+        return; // Exit early to prevent any further execution
       } else {
         throw new Error('No OAuth URL received from backend');
       }
