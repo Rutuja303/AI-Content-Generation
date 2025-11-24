@@ -48,9 +48,6 @@ class Settings(BaseSettings):
     INSTAGRAM_APP_ID: str = ""
     INSTAGRAM_APP_SECRET: str = ""
     
-    # SendGrid
-    SENDGRID_API_KEY: str = ""
-    SENDGRID_FROM_EMAIL: str = "noreply@yourdomain.com"
     
     class Config:
         env_file = "../.env"  # Look for .env in project root

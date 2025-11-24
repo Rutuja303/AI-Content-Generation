@@ -312,16 +312,6 @@ class AIService:
             - Reflects the user's intent and message
             - Return ONLY the final post text, no explanations or multiple options""",
             
-            "email": """You are an email marketing expert. Based on the user's request below, create ONE compelling email that:
-            - Directly addresses what the user asked for
-            - Includes a catchy subject line (max 50 characters)
-            - Has a professional greeting and body
-            - Provides clear value proposition related to the user's topic
-            - Has a strong call-to-action
-            - Uses professional closing
-            - Format: Subject: [subject line]\n\n[email body]
-            - Reflects the user's intent and message
-            - Return ONLY the final email content, no explanations or multiple options"""
         }
         
         return prompts.get(platform, "You are a content creator. Based on the user's request, create engaging content that matches the platform's style and audience while directly addressing what the user asked for.")
@@ -360,7 +350,8 @@ class AIService:
             elif platform == "facebook":
                 return f"Hey everyone! 👋\n\nWe have some exciting news to share! {user_message}\n\nWe're so excited about this and can't wait to share more details with you all!\n\nWhat do you think? Let us know in the comments! 💬\n\n#announcement #excited #community"
             else:
-                return f"Subject: Exciting Announcement\n\nHi there,\n\n{user_message}\n\nWe're thrilled to share this news with you!\n\nBest regards"
+                # Generic fallback for unknown platforms
+                return user_message
         
         else:
             # Generic but still platform-appropriate formatting
@@ -378,8 +369,8 @@ class AIService:
                 # Facebook: Community-focused
                 return f"{user_message}\n\nWhat do you all think? I'd love to hear your thoughts and start a conversation! 💬\n\n#content #community #discussion"
             else:
-                # Email: Professional format
-                return f"Subject: {user_message[:50]}\n\nHi there,\n\n{user_message}\n\nI hope this message finds you well.\n\nBest regards"
+                # Generic fallback for unknown platforms
+                return user_message
     
     def _get_fallback_content(self, prompt: str, platform: str) -> str:
         """Legacy method - redirects to enhanced fallback"""
