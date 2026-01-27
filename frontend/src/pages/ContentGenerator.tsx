@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { Sparkles, Twitter, Instagram, Linkedin, Facebook, Mail, Loader2, Copy, Check, Upload, X, Image, Video } from 'lucide-react';
+import { Sparkles, Twitter, Instagram, Linkedin, Facebook, Loader2, Copy, Check, Upload, X, Image, Video } from 'lucide-react';
 import { promptsAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -25,7 +25,6 @@ const platforms = [
   { id: 'instagram', name: 'Instagram', icon: Instagram, color: 'text-pink-400' },
   { id: 'linkedin', name: 'LinkedIn', icon: Linkedin, color: 'text-blue-600' },
   { id: 'facebook', name: 'Facebook', icon: Facebook, color: 'text-blue-700' },
-  { id: 'email', name: 'Email', icon: Mail, color: 'text-gray-600' },
 ];
 
 const ContentGenerator: React.FC = () => {

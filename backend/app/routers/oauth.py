@@ -195,7 +195,7 @@ def get_oauth_config():
             "client_secret": os.getenv("TWITTER_CLIENT_SECRET"),
             "auth_url": "https://twitter.com/i/oauth2/authorize",
             "token_url": "https://api.twitter.com/2/oauth2/token",
-            "redirect_uri": "http://localhost:8000/oauth/twitter/callback",
+            "redirect_uri": os.getenv("TWITTER_REDIRECT_URI", "https://unmonotonous-winnable-ashlee.ngrok-free.dev/oauth/twitter/callback"),
             "scopes": ["tweet.read", "tweet.write", "users.read", "offline.access"]
         },
         "linkedin": {
@@ -253,6 +253,27 @@ async def initiate_oauth(
                 detail=f"OAuth credentials not configured for {platform}. Please check your environment variables."
             )
         
+        # Check for placeholder values
+        placeholder_patterns = [
+            "your-", "your_", "placeholder", "example", "test-", "demo-"
+        ]
+        client_id_lower = config["client_id"].lower()
+        client_secret_lower = config["client_secret"].lower()
+        
+        if any(pattern in client_id_lower or pattern in client_secret_lower for pattern in placeholder_patterns):
+            print(f"ERROR: Placeholder credentials detected for {platform}")
+            platform_urls = {
+                "linkedin": "https://www.linkedin.com/developers/apps",
+                "twitter": "https://developer.twitter.com/en/portal/dashboard",
+                "facebook": "https://developers.facebook.com/apps",
+                "instagram": "https://developers.facebook.com/apps"
+            }
+            url = platform_urls.get(platform.lower(), f"https://developer.{platform}.com")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"OAuth credentials for {platform} are not configured. Please update your .env file with actual {platform.title()} Client ID and Client Secret from {url}"
+            )
+        
         print(f"DEBUG: Initiating OAuth for {platform} with client_id: {config['client_id']}")
         
         # Check if user already has an active connection
@@ -277,26 +298,45 @@ async def initiate_oauth(
         state_data = f"{current_user.id}:{state}"
         
         # Build OAuth URL
+        from urllib.parse import urlencode
+        
         auth_params = {
             "client_id": config["client_id"],
             "redirect_uri": config["redirect_uri"],
-            "scope": " ".join(config["scopes"]),
             "response_type": "code",
             "state": state_data
         }
         
+        # Twitter OAuth 2.0 requires space-separated scopes in the scope parameter
+        if platform == "twitter":
+            # Twitter uses space-separated scopes (will be URL-encoded to +)
+            auth_params["scope"] = " ".join(config["scopes"])
+        else:
+            auth_params["scope"] = " ".join(config["scopes"])
+        
         if platform == "facebook" or platform == "instagram":
             auth_params["response_type"] = "code"
         
-        # Build query string
-        query_string = "&".join([f"{k}={v}" for k, v in auth_params.items()])
+        # Build query string with proper URL encoding
+        query_string = urlencode(auth_params)
         auth_url = f"{config['auth_url']}?{query_string}"
+        
+        # For Twitter, also add code_challenge for PKCE if needed (optional for now)
+        if platform == "twitter":
+            print(f"🐦 TWITTER OAUTH URL GENERATED")
+            print(f"   Client ID: {config['client_id']}")
+            print(f"   Redirect URI: {config['redirect_uri']}")
+            print(f"   Scopes: {' '.join(config['scopes'])}")
+            print(f"   Full URL: {auth_url[:100]}...")
         
         print(f"DEBUG: Generated OAuth URL: {auth_url}")
         print(f"DEBUG: OAuth flow initiated successfully for {platform}")
         
         return {"auth_url": auth_url, "state": state}
         
+    except HTTPException:
+        # Re-raise HTTPException as-is (these are intentional errors)
+        raise
     except Exception as e:
         print(f"ERROR in initiate_oauth: {str(e)}")
         import traceback
@@ -309,20 +349,52 @@ async def initiate_oauth(
 @router.get("/{platform}/callback")
 async def oauth_callback(
     platform: str,
-    code: str,
-    state: str,
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    code: str = None,
+    state: str = None,
+    error: str = None,
+    error_description: str = None
 ):
     """Handle OAuth callback from social media platforms"""
     print("=" * 80)
     print("🔗 OAUTH CALLBACK STARTED")
     print("=" * 80)
     print(f"📱 Platform: {platform}")
-    print(f"🔑 Authorization code: {code[:20]}...")
-    print(f"🔐 State: {state}")
     print(f"🌐 Request URL: {request.url}")
     print(f"📋 Query params: {dict(request.query_params)}")
+    print("=" * 80)
+    
+    # Check for OAuth errors first
+    if error:
+        error_msg = error_description or error
+        print(f"❌ OAUTH ERROR RECEIVED FROM {platform.upper()}")
+        print("=" * 80)
+        print(f"🚨 Error: {error}")
+        print(f"📝 Error Description: {error_description}")
+        print("=" * 80)
+        
+        # Redirect to frontend with error
+        error_url = f"http://localhost:3000/profile?connection=error&platform={platform}&error={error_msg}"
+        print(f"🔗 Error Redirect URL: {error_url}")
+        return RedirectResponse(url=error_url)
+    
+    if not code:
+        error_msg = "No authorization code received from Twitter"
+        print(f"❌ MISSING AUTHORIZATION CODE")
+        print("=" * 80)
+        error_url = f"http://localhost:3000/profile?connection=error&platform={platform}&error={error_msg}"
+        return RedirectResponse(url=error_url)
+    
+    if not state:
+        error_msg = "No state parameter received"
+        print(f"❌ MISSING STATE PARAMETER")
+        print("=" * 80)
+        error_url = f"http://localhost:3000/profile?connection=error&platform={platform}&error={error_msg}"
+        return RedirectResponse(url=error_url)
+    
+    print(f"🔑 Authorization code: {code[:20]}...")
+    print(f"🔐 State: {state}")
     print("=" * 80)
     
     oauth_config = get_oauth_config()
@@ -536,20 +608,41 @@ async def exchange_code_for_token(platform: str, code: str, config: dict):
         print("=" * 50)
         
         if platform == "twitter":
-            # Twitter uses Basic Auth with client credentials
+            # Twitter OAuth 2.0 uses Basic Auth with client credentials
             import base64
             credentials = base64.b64encode(
                 f"{config['client_id']}:{config['client_secret']}".encode()
             ).decode()
             
-            headers = {"Authorization": f"Basic {credentials}"}
+            headers = {
+                "Authorization": f"Basic {credentials}",
+                "Content-Type": "application/x-www-form-urlencoded"
+            }
+            
+            print("🐦 TWITTER TOKEN EXCHANGE")
+            print("=" * 50)
+            print(f"🌐 Token URL: {config['token_url']}")
+            print(f"📋 Request Data:")
+            print(f"  🔑 Code: {token_data['code'][:20]}...")
+            print(f"  🌐 Redirect URI: {token_data['redirect_uri']}")
+            print(f"  📝 Grant Type: {token_data['grant_type']}")
+            print(f"📋 Headers: Authorization: Basic ***")
+            print("=" * 50)
+            
             response = await client.post(
                 config["token_url"],
                 data=token_data,
                 headers=headers
             )
+            
+            print("📡 TWITTER TOKEN RESPONSE")
+            print("=" * 50)
+            print(f"📊 Status Code: {response.status_code}")
+            print(f"📋 Response Headers: {dict(response.headers)}")
+            print(f"📄 Response Body: {response.text}")
+            print("=" * 50)
         elif platform == "linkedin":
-            # LinkedIn OAuth 2.0 - requires specific format
+            # LinkedIn OAuth 2.0 - requires client_id and client_secret in request body
             linkedin_data = {
                 "grant_type": "authorization_code",
                 "code": code,
@@ -572,7 +665,13 @@ async def exchange_code_for_token(platform: str, code: str, config: dict):
             print(f"  📝 Grant Type: {linkedin_data['grant_type']}")
             print(f"  🔐 Client ID: {linkedin_data['client_id']}")
             print(f"  🔐 Client Secret: {'*' * len(linkedin_data['client_secret']) if linkedin_data['client_secret'] else 'MISSING'}")
+            print(f"  🔐 Client Secret Length: {len(linkedin_data['client_secret']) if linkedin_data['client_secret'] else 0}")
             print(f"📋 Headers: {headers}")
+            
+            # Log the exact request body that will be sent
+            from urllib.parse import urlencode
+            request_body = urlencode(linkedin_data)
+            print(f"📤 Request Body (URL encoded): {request_body[:100]}...")
             print("=" * 50)
             
             response = await client.post(config["token_url"], data=linkedin_data, headers=headers)

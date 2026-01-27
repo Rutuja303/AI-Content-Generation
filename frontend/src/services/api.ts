@@ -101,7 +101,14 @@ export const publishAPI = {
 export const analyticsAPI = {
   getDashboard: () => api.get('/analytics/dashboard'),
   getPlatformStats: (days?: number) => api.get('/analytics/platform-stats', { params: { days } }),
+  getPlatformSummary: () => api.get('/analytics/platform-summary'),
   getTimeline: (days?: number) => api.get('/analytics/timeline', { params: { days } }),
   getPerformance: () => api.get('/analytics/performance'),
   getScheduledOverview: () => api.get('/analytics/scheduled-overview'),
+};
+
+export const settingsAPI = {
+  getSettings: () => api.get('/settings'),
+  updateSettings: (settings: { notifications: any; privacy: any }) => 
+    api.put('/settings', settings),
 };

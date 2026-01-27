@@ -1,7 +1,5 @@
 import tweepy
 import facebook
-import sendgrid
-from sendgrid.helpers.mail import Mail
 from typing import Dict, Optional
 from app.core.config import settings
 
@@ -104,32 +102,6 @@ class LinkedInService:
                 "error": str(e)
             }
 
-class EmailService:
-    def __init__(self):
-        self.sg = sendgrid.SendGridAPIClient(api_key=settings.SENDGRID_API_KEY)
-    
-    def send_email(self, to_email: str, subject: str, content: str) -> Dict:
-        try:
-            message = Mail(
-                from_email=settings.SENDGRID_FROM_EMAIL,
-                to_emails=to_email,
-                subject=subject,
-                html_content=content
-            )
-            
-            response = self.sg.send(message)
-            
-            return {
-                "success": True,
-                "message_id": response.headers.get("X-Message-Id"),
-                "message": "Email sent successfully"
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
-
 class SocialMediaManager:
     def __init__(self):
         self.services = {}
@@ -143,8 +115,6 @@ class SocialMediaManager:
             return InstagramService(access_token)
         elif platform == "linkedin":
             return LinkedInService(access_token)
-        elif platform == "email":
-            return EmailService()
         else:
             raise ValueError(f"Unsupported platform: {platform}")
     
@@ -152,15 +122,7 @@ class SocialMediaManager:
                        access_token_secret: str = None, **kwargs) -> Dict:
         try:
             service = self.get_service(platform, access_token, access_token_secret)
-            
-            if platform == "email":
-                return service.send_email(
-                    to_email=kwargs.get("to_email"),
-                    subject=kwargs.get("subject", "New Content"),
-                    content=content
-                )
-            else:
-                return service.publish_post(content)
+            return service.publish_post(content)
                 
         except Exception as e:
             return {

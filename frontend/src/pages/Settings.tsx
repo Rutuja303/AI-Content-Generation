@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Bell, 
   Shield, 
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { settingsAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
 interface NotificationSettings {
@@ -51,7 +52,32 @@ const Settings: React.FC = () => {
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'notifications' | 'privacy' | 'appearance' | 'data'>('notifications');
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      setIsLoading(true);
+      const response = await settingsAPI.getSettings();
+      if (response.data) {
+        if (response.data.notifications) {
+          setNotificationSettings(response.data.notifications);
+        }
+        if (response.data.privacy) {
+          setPrivacySettings(response.data.privacy);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch settings:', error);
+      // Use default settings if fetch fails
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleNotificationChange = (key: keyof NotificationSettings) => {
     setNotificationSettings(prev => ({
@@ -70,15 +96,15 @@ const Settings: React.FC = () => {
   const handleSaveSettings = async () => {
     setIsSaving(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Save settings to backend (placeholder)
-      // await api.put('/settings', { notifications: notificationSettings, privacy: privacySettings });
+      await settingsAPI.updateSettings({
+        notifications: notificationSettings,
+        privacy: privacySettings
+      });
       
       toast.success('Settings saved successfully!');
-    } catch (error) {
-      toast.error('Failed to save settings');
+    } catch (error: any) {
+      console.error('Failed to save settings:', error);
+      toast.error(error.response?.data?.detail || 'Failed to save settings');
     } finally {
       setIsSaving(false);
     }
@@ -145,6 +171,11 @@ const Settings: React.FC = () => {
       </div>
 
       {/* Tab Content */}
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        </div>
+      ) : (
       <div className="space-y-6">
         {/* Notifications Tab */}
         {activeTab === 'notifications' && (
@@ -325,6 +356,7 @@ const Settings: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* Save Button */}
       <div className="flex justify-end">
